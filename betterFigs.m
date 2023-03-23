@@ -29,7 +29,7 @@ function betterFigs(varargin)
 %   
 %   Inputs:
 %       gcf - handle of figure to apply changes to.
-%       gcf - handle of figure to apply changes to
+%       gca - handle of axis to apply changes to.
 % 
 %   Name-Value Pair Arguments:
 %       'saveFig'       - <boolean> Default: false
@@ -38,9 +38,9 @@ function betterFigs(varargin)
 %                       Name of file to save figure to. Do not include file
 %                       type (e.g. .png). If it exists, the 'Name' property of
 %                       the given figure will also be used as the saveName.
-%       'saveFig'       - <fileType> Default: -pdf Options:
-%                       '-pdf', '-eps', 'emf', '-svg', '-png', '-tif', '-jpg'
-%                       and '-bmp'.
+%       'fileType'      - <string> Default: .pdf Options:
+%                       '.pdf', '.eps', '.emf', '.svg', '.png', '.tif', '.jpg'
+%                       and '.bmp'.
 %                       File type to save figure as.
 %       'saveMFig'      - <boolean> Default: false
 %                       Whether to save the matlab-figure (.fig file) as well
@@ -85,7 +85,7 @@ function betterFigs(varargin)
     addOptional(p, 'gca', []);
     addParameter(p, 'saveFig', false);
     addParameter(p, 'saveName', []);
-    addParameter(p, 'fileType', '-pdf');
+    addParameter(p, 'fileType', '.pdf');
     addParameter(p, 'saveMFig', false);
     addParameter(p, 'pageWidth', 15);
     addParameter(p, 'saveWidth', 1);
@@ -139,51 +139,70 @@ function betterFigs(varargin)
     end
     
     % Sets gca if not supplied
-    if isempty(p.Results.gca)
+    if isempty(p.Results.gca) && isempty(p.Results.gcf)
         cur_gca = gca;       
+    elseif isempty(p.Results.gca)
+        cur_gca = cur_gcf.CurrentAxes;
     else
         cur_gca = p.Results.gca;
     end
         
     % Set line properties
-    lines = findobj(cur_gcf,'Type','Line', '-or', 'Type','FunctionLine', '-or', 'Type', 'ErrorBar');
-    for i = 1:numel(lines)
-       lines(i).LineWidth =  p.Results.LineWidth;
-       lines(i).MarkerSize =  p.Results.MarkerSize;
+%     lines = findobj(cur_gcf,'Type','Line', '-or', 'Type','FunctionLine', '-or', 'Type', 'ErrorBar');
+%     for i = 1:numel(lines)
+%        lines(i).LineWidth =  p.Results.LineWidth;
+%        lines(i).MarkerSize =  p.Results.MarkerSize;
+%     end
+    
+    lineWidths = findobj(cur_gca.Children,'-property','LineWidth');
+    lineWidths = findobj(lineWidths,'-not', 'Type', 'Histogram');
+    lineWidths = findobj(lineWidths,'-not', 'Type', 'Histogram2');
+    lineWidths = findobj(lineWidths,'-not', 'Type', 'Patch');
+    
+    for i = 1:numel(lineWidths)
+       lineWidths(i).LineWidth = p.Results.LineWidth;
     end
+    
+    markerSizes = findobj(cur_gca.Children,'-property','MarkerSize');
+    for i = 1:numel(markerSizes)
+       markerSizes(i).MarkerSize = p.Results.MarkerSize;
+    end
+    
     
     % Set background color properties
     colorProperties = findobj(cur_gcf, '-depth', 1, '-property','Color');
+    % Filter our colorbars
+    colorProperties = findobj(colorProperties, 'flat', '-not', 'Type','ColorBar');
     for i = 1:numel(colorProperties)
        set(colorProperties(i), 'Color', [1 1 1]);  % Sets figure and axes background
     end
 
     % Set font size
-    set(gca,'fontsize', p.Results.FontSize);    
+    set(cur_gca,'fontsize', p.Results.FontSize);    
     
     if ~p.Results.isChart
-        hold on
+        hold(cur_gca, 'on');
     end
     
     % Set grid properties
     if ~p.Results.clean
         if ~p.Results.isChart
-            box on
+            box(cur_gca,'on');
             if p.Results.showGrid
-                grid on
+                grid(cur_gca, 'on')
                 if p.Results.showGridMinor
-                    grid minor
+                    grid(cur_gca, 'minor');
                 end
 
                 % set gridline properties
-                set(gca,'GridLineStyle','-')                            
-                set(gca,'MinorGridLineStyle','-')
-                set(gca,'GridColor','k')
-                set(gca,'MinorGridColor','k')
+                set(cur_gca,'GridLineStyle','-')                            
+                set(cur_gca,'MinorGridLineStyle','-')
+                set(cur_gca,'GridColor','k')
+                set(cur_gca,'MinorGridColor','k')
             end
         end
     else
-        set(gca, 'visible', 'off');
+        set(cur_gca, 'visible', 'off');
     end
     
     % Shrink legend markers
@@ -193,7 +212,7 @@ function betterFigs(varargin)
     end
 
     % Tighten axes if not aleady set
-    if ~p.Results.isChart && ~any(contains(get(gca, {'XLimMode', 'YLimMode', 'ZLimMode'}), 'manual'))
+    if ~p.Results.isChart && ~any(contains(get(cur_gca, {'XLimMode', 'YLimMode', 'ZLimMode'}), 'manual'))
         axis tight
     end
     
@@ -225,9 +244,17 @@ function betterFigs(varargin)
             mkdir(p.Results.saveDir)
         end
         fullSavePath = fullfile(p.Results.saveDir, saveName);
-        export_fig(fullSavePath, p.Results.fileType, p.Results.dpi,'-nocrop', p.Results.export_fig_args{:});
+%         export_fig(fullSavePath, p.Results.fileType, p.Results.dpi,'-nocrop', p.Results.export_fig_args{:});
+%         if strcmp(p.Results.fileType, '.pdf')
+%             exportgraphics(cur_gcf,strcat(fullSavePath, p.Results.fileType),'ContentType','vector');
+%         else
+%             exportgraphics(cur_gcf,strcat(fullSavePath, p.Results.fileType),'Resolution',p.Results.dpi);
+%         end
+        exportgraphics(cur_gcf,strcat(fullSavePath, p.Results.fileType),'Resolution',p.Results.dpi);
+        
+%         export_fig(fullSavePath, p.Results.fileType, strcat("-r", string(p.Results.dpi)),'-nocrop');
         if p.Results.saveMFig
-            savefig(fullSavePath)
+            savefig(cur_gcf, fullSavePath)
         end
     end
 
