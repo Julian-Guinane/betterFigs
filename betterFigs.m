@@ -21,6 +21,7 @@ function betterFigs(varargin)
 %       betterFigs(..., 'shrinkLeg', <boolean>)
 %       betterFigs(..., 'nColors', <int>)
 %       betterFigs(..., 'isChart', <boolean>)
+%       betterFigs(..., 'axisStyle', <string>)
 %       betterFigs(..., 'export_fig_args', <cell>)
 % 
 %   betterFigs allows you to easily set figure properties to consistently
@@ -45,7 +46,7 @@ function betterFigs(varargin)
 %       'saveMFig'      - <boolean> Default: false
 %                       Whether to save the matlab-figure (.fig file) as well
 %                       as the image/vector file.
-%       'pageWidth'     - <double> Default: 15
+%       'pageWidth'     - <double> Default: 15  
 %                       Width of page used in combination with the 'saveWidth'
 %                       to resize the figure. Units of cm. Default value
 %                       corresponds approximately to an A4 page with margins.
@@ -75,6 +76,8 @@ function betterFigs(varargin)
 %                       Number of line/marker colors to plot with
 %       'isChart'       - <boolean> Default: false
 %                       Whether current figure is a chart.
+%       'axisStyle'     - <string> Default: padded
+%                       Style to size axes.
 %       'export_fig_args'   - <cell> Default: {}
 %                           Cell array of arguments to pass to the export_fig
 %                           function for greater contol of file saving.
@@ -100,6 +103,7 @@ function betterFigs(varargin)
     addParameter(p, 'shrinkLeg', false);
     addParameter(p, 'nColors', 4);
     addParameter(p, 'isChart', false);
+    addParameter(p, 'axisStyle', 'padded');
     addParameter(p, 'export_fig_args', {});
     parse(p, varargin{:});
     
@@ -189,9 +193,13 @@ function betterFigs(varargin)
         if ~p.Results.isChart
             box(cur_gca,'on');
             if p.Results.showGrid
-                grid(cur_gca, 'on')
+                if any([cur_gca.XGrid == 'off', cur_gca.YGrid == 'off', cur_gca.ZGrid == 'off'])
+                    grid(cur_gca, 'on');
+                end
                 if p.Results.showGridMinor
-                    grid(cur_gca, 'minor');
+                    if any([cur_gca.XMinorGrid == 'off', cur_gca.YMinorGrid == 'off', cur_gca.ZMinorGrid == 'off'])
+                        grid(cur_gca, 'minor');
+                    end
                 end
 
                 % set gridline properties
@@ -211,9 +219,9 @@ function betterFigs(varargin)
        leg.ItemTokenSize = leg.ItemTokenSize/3; 
     end
 
-    % Tighten axes if not aleady set
+    % Pad axes if not aleady set
     if ~p.Results.isChart && ~any(contains(get(cur_gca, {'XLimMode', 'YLimMode', 'ZLimMode'}), 'manual'))
-        axis tight
+        axis(p.Results.axisStyle);
     end
     
     % Scale figure
